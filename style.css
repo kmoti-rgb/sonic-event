@@ -571,6 +571,8 @@ body {
   font-size: 34px;
   border-color: rgba(0, 255, 170, 0.25);
   color: rgba(0, 255, 170, 0.5);
+  margin-left: auto;
+  margin-right: 8px;
 }
 
 .touch-btn-jump:active,
