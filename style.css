@@ -524,10 +524,10 @@ body {
 #touch-controls {
   display: none;
   position: absolute;
-  bottom: 20px;
+  bottom: 80px;
   left: 0;
   right: 0;
-  padding: 0 20px;
+  padding: 0 24px;
   justify-content: space-between;
   align-items: flex-end;
   z-index: 100;
@@ -541,13 +541,13 @@ body {
 }
 
 .touch-btn {
-  width: 70px;
-  height: 70px;
+  width: 90px;
+  height: 90px;
   border: 2px solid rgba(0, 200, 255, 0.4);
   border-radius: 50%;
   background: rgba(10, 15, 30, 0.6);
   color: rgba(0, 200, 255, 0.8);
-  font-size: 24px;
+  font-size: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -570,9 +570,9 @@ body {
 }
 
 .touch-btn-jump {
-  width: 80px;
-  height: 80px;
-  font-size: 28px;
+  width: 100px;
+  height: 100px;
+  font-size: 34px;
   border-color: rgba(0, 255, 170, 0.4);
   color: rgba(0, 255, 170, 0.8);
 }
@@ -604,19 +604,19 @@ body {
 /* 画面が小さいモバイルデバイスの場合の調整 */
 @media (max-width: 768px) and (hover: none) {
   .touch-btn {
-    width: 60px;
-    height: 60px;
-    font-size: 20px;
+    width: 80px;
+    height: 80px;
+    font-size: 26px;
   }
 
   .touch-btn-jump {
-    width: 70px;
-    height: 70px;
-    font-size: 24px;
+    width: 90px;
+    height: 90px;
+    font-size: 30px;
   }
 
   #touch-controls {
-    bottom: 10px;
-    padding: 0 12px;
+    bottom: 60px;
+    padding: 0 16px;
   }
 }
