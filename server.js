@@ -87,7 +87,8 @@ io.on('connection', (socket) => {
             room.state = 'playing';
             // ランダムにレベルを選択（0-2）
             room.level = Math.floor(Math.random() * 3);
-            io.to(roomId).emit('game-start', { level: room.level });
+            room.seed = Math.floor(Math.random() * 999999999);
+            io.to(roomId).emit('game-start', { level: room.level, seed: room.seed });
             console.log(`ゲーム開始: ${roomId}, Level: ${room.level}`);
         }
     });
@@ -132,8 +133,9 @@ io.on('connection', (socket) => {
             room.state = 'playing';
             room.winner = null;
             room.level = Math.floor(Math.random() * 3);
+            room.seed = Math.floor(Math.random() * 999999999);
             room.players.forEach(p => p.ready = false);
-            io.to(currentRoom).emit('game-start', { level: room.level });
+            io.to(currentRoom).emit('game-start', { level: room.level, seed: room.seed });
             console.log(`リマッチ開始: ${currentRoom}, Level: ${room.level}`);
         } else {
             socket.to(currentRoom).emit('opponent-wants-rematch');

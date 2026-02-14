@@ -226,63 +226,139 @@
         ctx.globalAlpha = 1;
     }
 
-    // ===== Level Definitions =====
-    const levels = [
-        {
-            target: 7,
-            platforms: [
-                { x: 0, y: H - TILE, w: W, h: TILE },
-                { x: 150, y: H - TILE * 3, w: TILE * 3, h: TILE * 0.5 },
-                { x: 400, y: H - TILE * 4.5, w: TILE * 3, h: TILE * 0.5 },
-                { x: 600, y: H - TILE * 3, w: TILE * 4, h: TILE * 0.5 },
-            ],
-            blocks: [
-                { type: 'number', value: 3, x: 200, y: H - TILE - 48 },
-                { type: 'operator', value: '+', x: 450, y: H - TILE * 4.5 - 48 },
-                { type: 'number', value: 4, x: 700, y: H - TILE * 3.5 - 48 },
-            ],
-            playerStart: { x: 60, y: H - TILE - PLAYER_H }
-        },
-        {
-            target: 15,
-            platforms: [
-                { x: 0, y: H - TILE, w: W, h: TILE },
-                { x: 80, y: H - TILE * 3, w: TILE * 2.5, h: TILE * 0.5 },
-                { x: 300, y: H - TILE * 4, w: TILE * 3, h: TILE * 0.5 },
-                { x: 550, y: H - TILE * 3, w: TILE * 3, h: TILE * 0.5 },
-                { x: 750, y: H - TILE * 4.5, w: TILE * 2.5, h: TILE * 0.5 },
-            ],
-            blocks: [
-                { type: 'number', value: 5, x: 100, y: H - TILE - 48 },
-                { type: 'operator', value: '×', x: 350, y: H - TILE * 4 - 48 },
-                { type: 'number', value: 3, x: 600, y: H - TILE * 3 - 48 },
-                { type: 'operator', value: '-', x: 200, y: H - TILE - 48 },
-                { type: 'number', value: 2, x: 600, y: H - TILE - 48 },
-            ],
-            playerStart: { x: 40, y: H - TILE - PLAYER_H }
-        },
-        {
-            target: 20,
-            platforms: [
-                { x: 0, y: H - TILE, w: W, h: TILE },
-                { x: 50, y: H - TILE * 3, w: TILE * 2, h: TILE * 0.5 },
-                { x: 250, y: H - TILE * 4.5, w: TILE * 2.5, h: TILE * 0.5 },
-                { x: 500, y: H - TILE * 3, w: TILE * 3, h: TILE * 0.5 },
-                { x: 700, y: H - TILE * 5, w: TILE * 2, h: TILE * 0.5 },
-                { x: 800, y: H - TILE * 3, w: TILE * 3, h: TILE * 0.5 },
-            ],
-            blocks: [
-                { type: 'number', value: 8, x: 80, y: H - TILE - 48 },
-                { type: 'operator', value: '+', x: 280, y: H - TILE * 4.5 - 48 },
-                { type: 'number', value: 2, x: 550, y: H - TILE * 3 - 48 },
-                { type: 'operator', value: '×', x: 730, y: H - TILE * 5 - 48 },
-                { type: 'number', value: 2, x: 850, y: H - TILE * 3 - 48 },
-                { type: 'operator', value: '-', x: 440, y: H - TILE * 3 - 48 },
-                { type: 'number', value: 5, x: 870, y: H - TILE * 4 - 48 },
-            ],
-            playerStart: { x: 40, y: H - TILE - PLAYER_H }
+    // ===== Seeded Random Number Generator =====
+    function createRNG(seed) {
+        let s = seed;
+        return function () {
+            s = (s * 1664525 + 1013904223) & 0xFFFFFFFF;
+            return (s >>> 0) / 0xFFFFFFFF;
+        };
+    }
+
+    function randInt(rng, min, max) {
+        return Math.floor(rng() * (max - min + 1)) + min;
+    }
+
+    function pick(rng, arr) {
+        return arr[Math.floor(rng() * arr.length)];
+    }
+
+    // ===== Random Level Generator =====
+    function generateLevel(difficulty, seed) {
+        const rng = seed != null ? createRNG(seed) : Math.random.bind(Math);
+
+        // Difficulty scaling (0=easy, increases)
+        const diff = Math.min(difficulty, 10);
+        const targetMin = 15 + diff * 8;
+        const targetMax = 30 + diff * 12;
+        const target = randInt(rng, targetMin, targetMax);
+
+        // Generate platforms (5-8 floating platforms + ground)
+        const platformCount = randInt(rng, 5, 8);
+        const platforms = [
+            { x: 0, y: H - TILE, w: W, h: TILE }, // ground
+        ];
+
+        // Create platformspositions avoiding overlap
+        const platSlots = [];
+        const slotWidth = (W - 100) / platformCount;
+        for (let i = 0; i < platformCount; i++) {
+            const px = 50 + i * slotWidth + rng() * (slotWidth * 0.4);
+            const heightLevel = randInt(rng, 2, 5);
+            const py = H - TILE * heightLevel;
+            const pw = TILE * (2 + rng() * 2);
+            platforms.push({ x: Math.round(px), y: Math.round(py), w: Math.round(pw), h: TILE * 0.5 });
+            platSlots.push({ x: Math.round(px), y: Math.round(py), w: Math.round(pw) });
         }
-    ];
+
+        // Generate blocks with multiple solution paths
+        const operators = ['+', '-', '×'];
+        const blocks = [];
+
+        // Place blocks on platforms and ground
+        const allPositions = [];
+
+        // Ground positions
+        for (let gx = 60; gx < W - 60; gx += 80) {
+            allPositions.push({ x: gx, y: H - TILE - 48 });
+        }
+        // Platform positions
+        for (const plat of platSlots) {
+            const numSpots = Math.max(1, Math.floor(plat.w / 60));
+            for (let j = 0; j < numSpots; j++) {
+                const bx = plat.x + 10 + j * 60;
+                if (bx + 40 < plat.x + plat.w) {
+                    allPositions.push({ x: Math.round(bx), y: Math.round(plat.y - 48) });
+                }
+            }
+        }
+
+        // Shuffle positions
+        for (let i = allPositions.length - 1; i > 0; i--) {
+            const j = Math.floor(rng() * (i + 1));
+            [allPositions[i], allPositions[j]] = [allPositions[j], allPositions[i]];
+        }
+
+        // Generate numbers and operators (10-14 blocks)
+        const blockCount = randInt(rng, 10, 14);
+        const usedPositions = allPositions.slice(0, Math.min(blockCount, allPositions.length));
+
+        // Ensure multiple solution paths: generate diverse numbers and operators
+        let numCount = 0;
+        let opCount = 0;
+
+        for (let i = 0; i < usedPositions.length; i++) {
+            const pos = usedPositions[i];
+            // Alternate: number, operator, number, operator...
+            // But add some randomness
+            let isNumber;
+            if (numCount === 0) {
+                isNumber = true; // first must be number
+            } else if (opCount === 0 && numCount > 0) {
+                isNumber = false; // need at least one operator
+            } else {
+                // Keep roughly 60% numbers, 40% operators
+                isNumber = rng() < 0.6;
+            }
+
+            if (isNumber) {
+                const maxNum = Math.min(Math.max(5, Math.floor(target / 2)), 20);
+                const value = randInt(rng, 1, maxNum);
+                blocks.push({ type: 'number', value, x: pos.x, y: pos.y });
+                numCount++;
+            } else {
+                const op = pick(rng, operators);
+                blocks.push({ type: 'operator', value: op, x: pos.x, y: pos.y });
+                opCount++;
+            }
+        }
+
+        // Ensure minimum operators (at least 3)
+        while (opCount < 3) {
+            const idx = Math.floor(rng() * blocks.length);
+            if (blocks[idx].type === 'number' && numCount > 4) {
+                blocks[idx].type = 'operator';
+                blocks[idx].value = pick(rng, operators);
+                opCount++;
+                numCount--;
+            }
+        }
+
+        return {
+            target,
+            platforms,
+            blocks,
+            playerStart: { x: 60, y: H - TILE - PLAYER_H }
+        };
+    }
+
+    // ===== Level Management =====
+    let currentLevelData = null;
+    let levelSeed = 0;
+
+    const levels = {
+        get length() { return 999; } // effectively infinite
+    };
 
     // ===== Game State =====
     let currentLevel = 0;
@@ -296,8 +372,10 @@
     let animFrame = 0;
 
     // ===== Initialize Level =====
-    function initLevel(index) {
-        const lvl = levels[index];
+    function initLevel(index, seed) {
+        levelSeed = seed != null ? seed : Math.floor(Math.random() * 999999999);
+        currentLevelData = generateLevel(index, levelSeed);
+        const lvl = currentLevelData;
         player = {
             x: lvl.playerStart.x,
             y: lvl.playerStart.y,
@@ -328,12 +406,12 @@
 
     function resetLevel() {
         if (!gameRunning) return;
-        initLevel(currentLevel);
+        initLevel(currentLevel, levelSeed);
     }
 
     // ===== HUD Update =====
     function updateHUD() {
-        hudTarget.textContent = levels[currentLevel].target;
+        hudTarget.textContent = currentLevelData ? currentLevelData.target : '?';
         hudCurrent.textContent = currentValue;
         hudPending.textContent = pendingOperator || '-';
         hudLevel.textContent = currentLevel + 1;
@@ -426,7 +504,7 @@
 
     // ===== Win Check =====
     function checkWin() {
-        if (currentValue === levels[currentLevel].target) {
+        if (currentLevelData && currentValue === currentLevelData.target) {
             gameRunning = false;
             winAnimation = 1;
             for (let i = 0; i < 5; i++) {
@@ -446,24 +524,15 @@
     }
 
     // ===== Solo overlay =====
+    // ===== Solo overlay =====
     function showSoloOverlay() {
-        if (currentLevel < levels.length - 1) {
-            overlayTitle.textContent = 'STAGE CLEAR!';
-            overlayMessage.textContent = `目標値 ${levels[currentLevel].target} に到達しました！`;
-            overlayButton.textContent = 'NEXT STAGE';
-            overlayButton.onclick = () => {
-                currentLevel++;
-                initLevel(currentLevel);
-            };
-        } else {
-            overlayTitle.textContent = 'ALL CLEAR!';
-            overlayMessage.textContent = '全ステージをクリアしました！おめでとうございます！';
-            overlayButton.textContent = 'PLAY AGAIN';
-            overlayButton.onclick = () => {
-                currentLevel = 0;
-                initLevel(0);
-            };
-        }
+        overlayTitle.textContent = 'STAGE CLEAR!';
+        overlayMessage.textContent = `目標値 ${currentLevelData.target} に到達しました！`;
+        overlayButton.textContent = 'NEXT STAGE';
+        overlayButton.onclick = () => {
+            currentLevel++;
+            initLevel(currentLevel);
+        };
         overlay.classList.remove('hidden');
     }
 
@@ -520,7 +589,7 @@
         if (player.x + PLAYER_W > W) player.x = W - PLAYER_W;
 
         // X collision
-        const lvl = levels[currentLevel];
+        const lvl = currentLevelData;
         for (const plat of lvl.platforms) {
             if (rectCollision({ x: player.x, y: player.y, w: PLAYER_W, h: PLAYER_H }, plat)) {
                 if (player.vx > 0) player.x = plat.x - PLAYER_W;
@@ -686,7 +755,7 @@
 
     // ===== Draw Platforms =====
     function drawPlatforms() {
-        const lvl = levels[currentLevel];
+        const lvl = currentLevelData;
         for (const plat of lvl.platforms) {
             if (plat.y >= H - TILE) {
                 // Ground
@@ -964,7 +1033,7 @@
         socket.on('game-start', (data) => {
             currentLevel = data.level;
             lobby.classList.add('hidden');
-            initLevel(currentLevel);
+            initLevel(currentLevel, data.seed);
         });
 
         socket.on('opponent-state', (state) => {
