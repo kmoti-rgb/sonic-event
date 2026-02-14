@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="数字と記号を集めて目標値を目指す、2Dアクション計算パズルゲーム">
+  <title>Sonic Event - 計算パズルアクション</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600&display=swap"
+    rel="stylesheet">
+</head>
+
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="hud-level">
+      <span class="hud-label">LEVEL</span>
+      <span class="hud-value" id="level-display">1</span>
+    </div>
+    <div id="hud">
+      <div class="hud-item" id="hud-current">
+        <span class="hud-label">CURRENT</span>
+        <span class="hud-value" id="current-display">0</span>
+      </div>
+      <div class="hud-arrow">→</div>
+      <div class="hud-item" id="hud-target">
+        <span class="hud-label">TARGET</span>
+        <span class="hud-value" id="target-display">0</span>
+      </div>
+      <div class="hud-item" id="hud-pending">
+        <span class="hud-label">PENDING</span>
+        <span class="hud-value" id="pending-display">-</span>
+      </div>
+    </div>
+    <!-- 対戦相手の情報 -->
+    <div id="opponent-hud" class="hidden">
+      <span class="opponent-label">OPPONENT</span>
+      <span class="opponent-value" id="opponent-current">0</span>
+      <span class="opponent-pending" id="opponent-pending">-</span>
+    </div>
+    <!-- ロビー画面 -->
+    <div id="lobby">
+      <div id="lobby-content">
+        <h1 id="lobby-title">SONIC EVENT</h1>
+        <p id="lobby-subtitle">計算パズルアクション</p>
+        <div id="lobby-menu">
+          <button id="btn-solo" class="lobby-btn">SOLO PLAY</button>
+          <button id="btn-create" class="lobby-btn lobby-btn-online">CREATE ROOM</button>
+          <button id="btn-join" class="lobby-btn lobby-btn-online">JOIN ROOM</button>
+        </div>
+        <div id="room-panel" class="hidden">
+          <div id="room-create-panel" class="hidden">
+            <p class="room-info">ルームID:</p>
+            <p id="room-id-display" class="room-id-big"></p>
+            <p class="room-status" id="room-status">対戦相手を待っています...</p>
+          </div>
+          <div id="room-join-panel" class="hidden">
+            <p class="room-info">ルームIDを入力:</p>
+            <input type="text" id="room-id-input" maxlength="5" placeholder="XXXXX" autocomplete="off">
+            <button id="btn-join-confirm" class="lobby-btn lobby-btn-small">参加</button>
+            <p id="join-error" class="room-error"></p>
+          </div>
+          <button id="btn-back" class="lobby-btn lobby-btn-back">← 戻る</button>
+        </div>
+      </div>
+    </div>
+    <!-- ゲーム結果オーバーレイ -->
+    <div id="overlay" class="hidden">
+      <div id="overlay-content">
+        <h1 id="overlay-title"></h1>
+        <p id="overlay-message"></p>
+        <button id="overlay-button"></button>
+      </div>
+    </div>
+    <div id="controls-hint">
+      <span>← A/D → 移動</span>
+      <span>SPACE ジャンプ</span>
+      <span>R リセット</span>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="game.js"></script>
+</body>
+
+</html>

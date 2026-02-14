@@ -1,0 +1,4 @@
+node_modules/
+.env
+*.log
+easy_deploy.ps1
