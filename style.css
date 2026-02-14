@@ -618,6 +618,8 @@ body {
     width: 100%;
     flex: 1;
     min-height: 0;
+    object-fit: contain;
+    background: #0a0a1a;
   }
 
   #touch-controls {
