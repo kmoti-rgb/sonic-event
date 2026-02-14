@@ -65,6 +65,36 @@
     });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
 
+    // ===== Touch Controls =====
+    function setupTouchButton(id, keyCode) {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            keys[keyCode] = true;
+            btn.classList.add('active');
+        }, { passive: false });
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            keys[keyCode] = false;
+            btn.classList.remove('active');
+        }, { passive: false });
+        btn.addEventListener('touchcancel', (e) => {
+            keys[keyCode] = false;
+            btn.classList.remove('active');
+        });
+        // Prevent context menu on long press
+        btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+    setupTouchButton('touch-left', 'ArrowLeft');
+    setupTouchButton('touch-right', 'ArrowRight');
+    setupTouchButton('touch-jump', 'Space');
+
+    // Prevent default touch behavior on game container to avoid scrolling
+    document.getElementById('game-container').addEventListener('touchmove', (e) => {
+        e.preventDefault();
+    }, { passive: false });
+
     // ===== Online State =====
     let socket = null;
     let isOnline = false;

@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="数字と記号を集めて目標値を目指す、2Dアクション計算パズルゲーム">
   <title>Sonic Event - 計算パズルアクション</title>
   <link rel="stylesheet" href="style.css">
@@ -72,6 +72,14 @@
         <p id="overlay-message"></p>
         <button id="overlay-button"></button>
       </div>
+    </div>
+    <!-- モバイル用タッチコントロール -->
+    <div id="touch-controls">
+      <div id="touch-dpad">
+        <button id="touch-left" class="touch-btn touch-btn-dir">◀</button>
+        <button id="touch-right" class="touch-btn touch-btn-dir">▶</button>
+      </div>
+      <button id="touch-jump" class="touch-btn touch-btn-jump">▲</button>
     </div>
     <div id="controls-hint">
       <span>← A/D → 移動</span>

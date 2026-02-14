@@ -519,3 +519,104 @@ body {
 #room-id-input::placeholder {
   color: rgba(100, 100, 150, 0.4);
 }
+
+/* ===== モバイル用タッチコントロール ===== */
+#touch-controls {
+  display: none;
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  padding: 0 20px;
+  justify-content: space-between;
+  align-items: flex-end;
+  z-index: 100;
+  pointer-events: none;
+}
+
+#touch-dpad {
+  display: flex;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.touch-btn {
+  width: 70px;
+  height: 70px;
+  border: 2px solid rgba(0, 200, 255, 0.4);
+  border-radius: 50%;
+  background: rgba(10, 15, 30, 0.6);
+  color: rgba(0, 200, 255, 0.8);
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: background 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.touch-btn:active,
+.touch-btn.active {
+  background: rgba(0, 200, 255, 0.25);
+  border-color: rgba(0, 200, 255, 0.8);
+  box-shadow: 0 0 20px rgba(0, 200, 255, 0.4), inset 0 0 10px rgba(0, 200, 255, 0.15);
+  color: #fff;
+}
+
+.touch-btn-jump {
+  width: 80px;
+  height: 80px;
+  font-size: 28px;
+  border-color: rgba(0, 255, 170, 0.4);
+  color: rgba(0, 255, 170, 0.8);
+}
+
+.touch-btn-jump:active,
+.touch-btn-jump.active {
+  background: rgba(0, 255, 170, 0.25);
+  border-color: rgba(0, 255, 170, 0.8);
+  box-shadow: 0 0 20px rgba(0, 255, 170, 0.4), inset 0 0 10px rgba(0, 255, 170, 0.15);
+  color: #fff;
+}
+
+/* タッチデバイスのみで表示 */
+@media (hover: none) and (pointer: coarse) {
+  #touch-controls {
+    display: flex;
+  }
+
+  #controls-hint {
+    display: none;
+  }
+
+  #game-container {
+    max-height: 100vh;
+    max-height: 100dvh;
+  }
+}
+
+/* 画面が小さいモバイルデバイスの場合の調整 */
+@media (max-width: 768px) and (hover: none) {
+  .touch-btn {
+    width: 60px;
+    height: 60px;
+    font-size: 20px;
+  }
+
+  .touch-btn-jump {
+    width: 70px;
+    height: 70px;
+    font-size: 24px;
+  }
+
+  #touch-controls {
+    bottom: 10px;
+    padding: 0 12px;
+  }
+}
