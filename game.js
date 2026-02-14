@@ -569,6 +569,37 @@
             }
         }
 
+        // Player vs Opponent collision (push each other)
+        if (isOnline && opponent) {
+            const opRect = { x: opponent.x, y: opponent.y, w: PLAYER_W, h: PLAYER_H };
+            const myRect = { x: player.x, y: player.y, w: PLAYER_W, h: PLAYER_H };
+            if (rectCollision(myRect, opRect)) {
+                const overlapX = Math.min(myRect.x + PLAYER_W, opRect.x + PLAYER_W) - Math.max(myRect.x, opRect.x);
+                const overlapY = Math.min(myRect.y + PLAYER_H, opRect.y + PLAYER_H) - Math.max(myRect.y, opRect.y);
+                if (overlapX < overlapY) {
+                    // Push horizontally
+                    const pushX = overlapX / 2 + 1;
+                    if (player.x < opponent.x) {
+                        player.x -= pushX;
+                    } else {
+                        player.x += pushX;
+                    }
+                    if (player.x < 0) player.x = 0;
+                    if (player.x + PLAYER_W > W) player.x = W - PLAYER_W;
+                } else {
+                    // Push vertically
+                    if (player.y < opponent.y) {
+                        player.y = opponent.y - PLAYER_H;
+                        player.vy = 0;
+                        player.onGround = true;
+                    } else {
+                        player.y = opponent.y + PLAYER_H;
+                        player.vy = Math.max(player.vy, 0);
+                    }
+                }
+            }
+        }
+
         // Send state to server
         if (isOnline) {
             const now = Date.now();
@@ -948,8 +979,16 @@
         });
 
         socket.on('opponent-block-collected', (data) => {
+            // Mark the block as collected so this player can't pick it up
+            for (const block of activeBlocks) {
+                if (!block.collected && block.x === data.x && block.y === data.y && block.type === data.type && block.value === data.value) {
+                    block.collected = true;
+                    break;
+                }
+            }
             // Show particle effect at opponent's collected block position
-            spawnParticles(data.x + 20, data.y + 20, '#ff4444', 8);
+            spawnParticles(data.x + 20, data.y + 20, '#ff4444', 12);
+            spawnFloatingText(data.x + 20, data.y - 10, '✕', '#ff4444');
         });
 
         socket.on('game-result', (data) => {
