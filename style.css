@@ -543,10 +543,10 @@ body {
 .touch-btn {
   width: 90px;
   height: 90px;
-  border: 2px solid rgba(0, 200, 255, 0.4);
+  border: 2px solid rgba(0, 200, 255, 0.25);
   border-radius: 50%;
-  background: rgba(10, 15, 30, 0.6);
-  color: rgba(0, 200, 255, 0.8);
+  background: rgba(10, 15, 30, 0.3);
+  color: rgba(0, 200, 255, 0.5);
   font-size: 30px;
   display: flex;
   align-items: center;
@@ -573,8 +573,8 @@ body {
   width: 100px;
   height: 100px;
   font-size: 34px;
-  border-color: rgba(0, 255, 170, 0.4);
-  color: rgba(0, 255, 170, 0.8);
+  border-color: rgba(0, 255, 170, 0.25);
+  color: rgba(0, 255, 170, 0.5);
 }
 
 .touch-btn-jump:active,
@@ -582,6 +582,25 @@ body {
   background: rgba(0, 255, 170, 0.25);
   border-color: rgba(0, 255, 170, 0.8);
   box-shadow: 0 0 20px rgba(0, 255, 170, 0.4), inset 0 0 10px rgba(0, 255, 170, 0.15);
+  color: #fff;
+}
+
+.touch-btn-reset {
+  width: 60px;
+  height: 60px;
+  font-size: 24px;
+  border-color: rgba(255, 170, 0, 0.25);
+  color: rgba(255, 170, 0, 0.5);
+  position: absolute;
+  top: -80px;
+  right: 0;
+}
+
+.touch-btn-reset:active,
+.touch-btn-reset.active {
+  background: rgba(255, 170, 0, 0.25);
+  border-color: rgba(255, 170, 0, 0.8);
+  box-shadow: 0 0 20px rgba(255, 170, 0, 0.4), inset 0 0 10px rgba(255, 170, 0, 0.15);
   color: #fff;
 }
 

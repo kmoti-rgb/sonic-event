@@ -90,6 +90,21 @@
     setupTouchButton('touch-right', 'ArrowRight');
     setupTouchButton('touch-jump', 'Space');
 
+    // Reset button (tap only, not hold)
+    const touchResetBtn = document.getElementById('touch-reset');
+    if (touchResetBtn) {
+        touchResetBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchResetBtn.classList.add('active');
+            resetLevel();
+        }, { passive: false });
+        touchResetBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            touchResetBtn.classList.remove('active');
+        }, { passive: false });
+        touchResetBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
     // Prevent default touch behavior on game container to avoid scrolling
     document.getElementById('game-container').addEventListener('touchmove', (e) => {
         e.preventDefault();
