@@ -76,14 +76,21 @@
     <!-- モバイル用タッチコントロール -->
     <div id="touch-controls">
       <div id="touch-dpad">
-        <button id="touch-left" class="touch-btn touch-btn-dir">◀</button>
-        <button id="touch-right" class="touch-btn touch-btn-dir">▶</button>
+        <button id="touch-up" class="touch-btn touch-btn-dir">▲</button>
+        <div id="touch-lr">
+          <button id="touch-left" class="touch-btn touch-btn-dir">◀</button>
+          <button id="touch-right" class="touch-btn touch-btn-dir">▶</button>
+        </div>
+        <button id="touch-down" class="touch-btn touch-btn-dir">▼</button>
       </div>
-      <button id="touch-jump" class="touch-btn touch-btn-jump">▲</button>
-      <button id="touch-reset" class="touch-btn touch-btn-reset">↺</button>
+      <div id="touch-action">
+        <button id="touch-jump" class="touch-btn touch-btn-jump">JUMP</button>
+        <button id="touch-reset" class="touch-btn touch-btn-reset">↺</button>
+      </div>
     </div>
     <div id="controls-hint">
       <span>← A/D → 移動</span>
+      <span>↑↓ はしご登り降り</span>
       <span>SPACE ジャンプ</span>
       <span>R リセット</span>
     </div>

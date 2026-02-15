@@ -88,6 +88,8 @@
     }
     setupTouchButton('touch-left', 'ArrowLeft');
     setupTouchButton('touch-right', 'ArrowRight');
+    setupTouchButton('touch-up', 'ArrowUp');
+    setupTouchButton('touch-down', 'ArrowDown');
     setupTouchButton('touch-jump', 'Space');
 
     // Reset button (tap only, not hold)
@@ -286,85 +288,73 @@
         }
         const target = Math.max(cur, 1);
 
-        // --- 3-layer platforms (Ground + Mid + Top) ---
-        const platforms = [{ x: 0, y: H - TILE, w: W, h: TILE }];
-        const platSlots = [];
+        // --- Fixed 3-layer layout with ladders (DK Jr. style) ---
+        const groundY = H - TILE;
+        const midY = H - TILE * 4;
+        const topY = H - TILE * 7;
+        const platH = TILE * 0.5;
 
-        const midY = H - TILE * 3;
-        const midCount = randInt(rng, 2, 3);
-        for (let i = 0; i < midCount; i++) {
-            const px = (W / (midCount + 1)) * (i + 0.5) + (rng() - 0.5) * 60;
-            const pw = TILE * (3 + rng() * 1.5);
-            platforms.push({ x: Math.round(px), y: midY, w: Math.round(pw), h: TILE * 0.5 });
-            platSlots.push({ x: Math.round(px), y: midY, w: Math.round(pw) });
-        }
+        const platforms = [
+            { x: 0, y: groundY, w: W, h: TILE },
+            { x: 0, y: midY, w: 280, h: platH },
+            { x: 340, y: midY, w: 280, h: platH },
+            { x: 680, y: midY, w: 280, h: platH },
+            { x: 60, y: topY, w: 240, h: platH },
+            { x: 360, y: topY, w: 240, h: platH },
+            { x: 660, y: topY, w: 240, h: platH },
+        ];
 
-        const topY = H - TILE * 5;
-        const topCount = randInt(rng, 2, 3);
-        for (let i = 0; i < topCount; i++) {
-            const px = (W / (topCount + 1)) * (i + 0.5) + (rng() - 0.5) * 60;
-            const pw = TILE * (2.5 + rng() * 1.5);
-            platforms.push({ x: Math.round(px), y: topY, w: Math.round(pw), h: TILE * 0.5 });
-            platSlots.push({ x: Math.round(px), y: topY, w: Math.round(pw) });
-        }
+        const ladderW = 36;
+        const ladders = [
+            { x: 140, y: midY + platH, w: ladderW, h: groundY - midY - platH },
+            { x: 460, y: midY + platH, w: ladderW, h: groundY - midY - platH },
+            { x: 780, y: midY + platH, w: ladderW, h: groundY - midY - platH },
+            { x: 300, y: topY + platH, w: ladderW, h: midY - topY - platH },
+            { x: 660, y: topY + platH, w: ladderW, h: midY - topY - platH },
+        ];
 
-        // --- Block placement helpers ---
-        const playerStart = { x: 60, y: H - TILE - PLAYER_H };
-        const BS = 40, MDIST = 55;
+        // Fixed block spots on each floor
+        const BS = 40;
+        const blockSpots = [
+            { x: 200, y: groundY - BS - 8 },
+            { x: 380, y: groundY - BS - 8 },
+            { x: 560, y: groundY - BS - 8 },
+            { x: 740, y: groundY - BS - 8 },
+            { x: 60, y: midY - BS - 8 },
+            { x: 360, y: midY - BS - 8 },
+            { x: 520, y: midY - BS - 8 },
+            { x: 800, y: midY - BS - 8 },
+            { x: 120, y: topY - BS - 8 },
+            { x: 420, y: topY - BS - 8 },
+            { x: 720, y: topY - BS - 8 },
+        ];
 
-        function blocked(bx, by) {
-            for (const p of platforms)
-                if (bx + BS > p.x && bx < p.x + p.w && by + BS > p.y && by < p.y + p.h) return true;
-            return false;
-        }
-        function nearStart(bx, by) { return bx < playerStart.x + PLAYER_W + 30 && by > H - TILE * 2 - 60; }
-        function nearOther(bx, by, list) {
-            for (const p of list) if (Math.abs(bx - p.x) < MDIST && Math.abs(by - p.y) < MDIST) return true;
-            return false;
-        }
-
-        // Candidate positions
-        const cands = [];
-        for (let gx = 160; gx < W - 60; gx += 85) {
-            const p = { x: gx, y: H - TILE - BS - 8 };
-            if (!nearStart(p.x, p.y) && !blocked(p.x, p.y)) cands.push(p);
-        }
-        for (const pl of platSlots) {
-            const sw = BS + 20, m = 15;
-            for (let j = 0; j < Math.max(1, Math.floor((pl.w - m * 2) / sw)); j++) {
-                const bx = pl.x + m + j * sw, by = pl.y - BS - 8;
-                if (bx + BS <= pl.x + pl.w - 5 && !blocked(bx, by) &&
-                    bx >= 10 && bx + BS <= W - 10 && by >= 10 && !nearStart(bx, by))
-                    cands.push({ x: Math.round(bx), y: Math.round(by) });
-            }
-        }
-
-        // Shuffle and filter
-        for (let i = cands.length - 1; i > 0; i--) {
+        // Shuffle spots
+        const shuffled = [...blockSpots];
+        for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(rng() * (i + 1));
-            [cands[i], cands[j]] = [cands[j], cands[i]];
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
-        const spots = [];
-        for (const c of cands) { if (spots.length >= 12) break; if (!nearOther(c.x, c.y, spots)) spots.push(c); }
 
-        // --- Place solution blocks first, then decoys ---
+        // Place solution blocks first, then decoys
         const blocks = [];
         let si = 0;
-        for (let i = 0; i < solNums.length && si < spots.length; i++) {
-            blocks.push({ type: 'number', value: solNums[i], x: spots[si].x, y: spots[si].y }); si++;
-            if (i < solOps.length && si < spots.length) {
-                blocks.push({ type: 'operator', value: solOps[i], x: spots[si].x, y: spots[si].y }); si++;
+        for (let i = 0; i < solNums.length && si < shuffled.length; i++) {
+            blocks.push({ type: 'number', value: solNums[i], x: shuffled[si].x, y: shuffled[si].y }); si++;
+            if (i < solOps.length && si < shuffled.length) {
+                blocks.push({ type: 'operator', value: solOps[i], x: shuffled[si].x, y: shuffled[si].y }); si++;
             }
         }
         const extraOps = ['+', '-', '×', '÷'];
-        while (si < spots.length) {
-            const p = spots[si];
+        while (si < shuffled.length) {
+            const p = shuffled[si];
             if (rng() < 0.65) blocks.push({ type: 'number', value: randInt(rng, 1, 9), x: p.x, y: p.y });
             else blocks.push({ type: 'operator', value: pick(rng, extraOps), x: p.x, y: p.y });
             si++;
         }
 
-        return { target, platforms, blocks, playerStart };
+        const playerStart = { x: 60, y: groundY - PLAYER_H };
+        return { target, platforms, ladders, blocks, playerStart };
     }
 
     // ===== Level Management =====
@@ -397,6 +387,7 @@
             vx: 0,
             vy: 0,
             onGround: false,
+            onLadder: false,
             facingRight: true,
             walkFrame: 0
         };
@@ -581,22 +572,59 @@
     function updatePlayer() {
         if (!gameRunning) return;
 
+        const lvl = currentLevelData;
+        const ladders = lvl.ladders || [];
+
+        // Check if player is overlapping any ladder
+        const playerCX = player.x + PLAYER_W / 2;
+        const playerCY = player.y + PLAYER_H / 2;
+        let onLadderNow = false;
+        for (const lad of ladders) {
+            if (playerCX > lad.x && playerCX < lad.x + lad.w &&
+                player.y + PLAYER_H > lad.y && player.y < lad.y + lad.h) {
+                onLadderNow = true;
+                break;
+            }
+        }
+
+        // Enter ladder with up/down
+        const wantUp = keys['ArrowUp'] || keys['KeyW'];
+        const wantDown = keys['ArrowDown'] || keys['KeyS'];
+        if (onLadderNow && (wantUp || wantDown)) {
+            player.onLadder = true;
+        }
+        if (!onLadderNow) {
+            player.onLadder = false;
+        }
+
         // Horizontal input
         let moveX = 0;
         if (keys['KeyA'] || keys['ArrowLeft']) moveX = -1;
         if (keys['KeyD'] || keys['ArrowRight']) moveX = 1;
 
-        player.vx = moveX * PLAYER_SPEED;
+        if (player.onLadder) {
+            // --- Ladder movement ---
+            player.vx = 0;
+            player.vy = 0;
+            const CLIMB_SPEED = 3.5;
+            if (wantUp) player.y -= CLIMB_SPEED;
+            if (wantDown) player.y += CLIMB_SPEED;
+            // Slow horizontal movement on ladder
+            player.x += moveX * 1.5;
+        } else {
+            // --- Normal movement ---
+            player.vx = moveX * PLAYER_SPEED;
 
-        // Jump
-        if ((keys['Space'] || keys['ArrowUp']) && player.onGround) {
-            player.vy = JUMP_FORCE;
-            player.onGround = false;
-            spawnParticles(player.x + PLAYER_W / 2, player.y + PLAYER_H, '#66ccff', 8);
+            // Jump (only on ground, not on ladder)
+            if ((keys['Space'] || keys['ArrowUp']) && player.onGround) {
+                player.vy = JUMP_FORCE;
+                player.onGround = false;
+                spawnParticles(player.x + PLAYER_W / 2, player.y + PLAYER_H, '#66ccff', 8);
+            }
+
+            // Gravity
+            player.vy = Math.min(player.vy + GRAVITY, MAX_FALL);
         }
-
-        // Gravity
-        player.vy = Math.min(player.vy + GRAVITY, MAX_FALL);
 
         // Move X
         player.x += player.vx;
@@ -604,7 +632,6 @@
         if (player.x + PLAYER_W > W) player.x = W - PLAYER_W;
 
         // X collision
-        const lvl = currentLevelData;
         for (const plat of lvl.platforms) {
             if (rectCollision({ x: player.x, y: player.y, w: PLAYER_W, h: PLAYER_H }, plat)) {
                 if (player.vx > 0) player.x = plat.x - PLAYER_W;
@@ -612,16 +639,19 @@
             }
         }
 
-        // Move Y
-        player.y += player.vy;
+        // Move Y (only if not on ladder - ladder already moved Y)
+        if (!player.onLadder) {
+            player.y += player.vy;
+        }
         player.onGround = false;
 
         for (const plat of lvl.platforms) {
             if (rectCollision({ x: player.x, y: player.y, w: PLAYER_W, h: PLAYER_H }, plat)) {
-                if (player.vy > 0) {
+                if (player.vy >= 0 || player.onLadder) {
                     player.y = plat.y - PLAYER_H;
                     player.vy = 0;
                     player.onGround = true;
+                    if (player.onLadder && !wantDown) player.onLadder = false;
                 } else if (player.vy < 0) {
                     player.y = plat.y + plat.h;
                     player.vy = 0;
@@ -798,6 +828,24 @@
                 ctx.fillRect(plat.x, plat.y, plat.w, 2);
                 ctx.shadowBlur = 0;
             }
+        }
+
+        // Draw ladders
+        const ladders = lvl.ladders || [];
+        for (const lad of ladders) {
+            // Side rails
+            ctx.fillStyle = '#8B6914';
+            ctx.fillRect(lad.x, lad.y, 4, lad.h);
+            ctx.fillRect(lad.x + lad.w - 4, lad.y, 4, lad.h);
+            // Rungs
+            ctx.fillStyle = '#A0782C';
+            const rungSpacing = 24;
+            for (let ry = lad.y + 12; ry < lad.y + lad.h; ry += rungSpacing) {
+                ctx.fillRect(lad.x + 2, ry, lad.w - 4, 4);
+            }
+            // Highlight
+            ctx.fillStyle = 'rgba(255, 200, 80, 0.15)';
+            ctx.fillRect(lad.x + 8, lad.y, lad.w - 16, lad.h);
         }
     }
 
