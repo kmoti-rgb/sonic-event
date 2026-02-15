@@ -259,36 +259,85 @@
             { x: 0, y: H - TILE, w: W, h: TILE }, // ground
         ];
 
-        // Create platformspositions avoiding overlap
+        // Create platform positions avoiding overlap
         const platSlots = [];
         const slotWidth = (W - 100) / platformCount;
         for (let i = 0; i < platformCount; i++) {
-            const px = 50 + i * slotWidth + rng() * (slotWidth * 0.4);
-            const heightLevel = randInt(rng, 2, 5);
+            const px = 50 + i * slotWidth + rng() * (slotWidth * 0.3);
+            const heightLevel = randInt(rng, 2, 4);
             const py = H - TILE * heightLevel;
-            const pw = TILE * (2 + rng() * 2);
+            const pw = TILE * (2.5 + rng() * 1.5);
             platforms.push({ x: Math.round(px), y: Math.round(py), w: Math.round(pw), h: TILE * 0.5 });
             platSlots.push({ x: Math.round(px), y: Math.round(py), w: Math.round(pw) });
         }
 
-        // Generate blocks with multiple solution paths
-        const operators = ['+', '-', '×'];
-        const blocks = [];
+        // Player start area to avoid
+        const playerStart = { x: 60, y: H - TILE - PLAYER_H };
+        const BLOCK_SIZE = 40;
+        const MIN_BLOCK_DIST = 50; // minimum distance between blocks
 
-        // Place blocks on platforms and ground
+        // Helper: check if a block position overlaps any platform
+        function isInsidePlatform(bx, by) {
+            const blockRect = { x: bx, y: by, w: BLOCK_SIZE, h: BLOCK_SIZE };
+            for (const plat of platforms) {
+                // Check if block overlaps with platform body
+                if (bx + BLOCK_SIZE > plat.x && bx < plat.x + plat.w &&
+                    by + BLOCK_SIZE > plat.y && by < plat.y + plat.h) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Helper: check if too close to player start
+        function isTooCloseToStart(bx, by) {
+            return bx < playerStart.x + PLAYER_W + 20 && by > H - TILE * 2 - 60;
+        }
+
+        // Helper: check if too close to another block
+        function isTooCloseToOther(bx, by, existingPositions) {
+            for (const pos of existingPositions) {
+                const dx = bx - pos.x;
+                const dy = by - pos.y;
+                if (Math.abs(dx) < MIN_BLOCK_DIST && Math.abs(dy) < MIN_BLOCK_DIST) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Helper: check if block is reachable (not floating in empty space, not off screen)
+        function isReachable(bx, by) {
+            if (bx < 10 || bx + BLOCK_SIZE > W - 10) return false;
+            if (by < 10 || by + BLOCK_SIZE > H) return false;
+            return true;
+        }
+
+        // Generate candidate positions
         const allPositions = [];
 
-        // Ground positions
-        for (let gx = 60; gx < W - 60; gx += 80) {
-            allPositions.push({ x: gx, y: H - TILE - 48 });
+        // Ground positions (spaced apart, avoiding player start)
+        for (let gx = 150; gx < W - 60; gx += 90) {
+            const pos = { x: gx, y: H - TILE - BLOCK_SIZE - 8 };
+            if (!isTooCloseToStart(pos.x, pos.y) && !isInsidePlatform(pos.x, pos.y)) {
+                allPositions.push(pos);
+            }
         }
-        // Platform positions
+
+        // Platform positions (directly above each platform)
         for (const plat of platSlots) {
-            const numSpots = Math.max(1, Math.floor(plat.w / 60));
+            const margin = 15;
+            const spotWidth = BLOCK_SIZE + 15;
+            const numSpots = Math.max(1, Math.floor((plat.w - margin * 2) / spotWidth));
             for (let j = 0; j < numSpots; j++) {
-                const bx = plat.x + 10 + j * 60;
-                if (bx + 40 < plat.x + plat.w) {
-                    allPositions.push({ x: Math.round(bx), y: Math.round(plat.y - 48) });
+                const bx = plat.x + margin + j * spotWidth;
+                const by = plat.y - BLOCK_SIZE - 8;
+                // Verify block fits on platform and isn't inside another platform
+                if (bx + BLOCK_SIZE <= plat.x + plat.w - 5 &&
+                    !isInsidePlatform(bx, by) &&
+                    isReachable(bx, by) &&
+                    !isTooCloseToStart(bx, by)) {
+                    allPositions.push({ x: Math.round(bx), y: Math.round(by) });
                 }
             }
         }
@@ -299,25 +348,29 @@
             [allPositions[i], allPositions[j]] = [allPositions[j], allPositions[i]];
         }
 
-        // Generate numbers and operators (10-14 blocks)
-        const blockCount = randInt(rng, 10, 14);
-        const usedPositions = allPositions.slice(0, Math.min(blockCount, allPositions.length));
+        // Select positions ensuring no overlap between blocks
+        const usedPositions = [];
+        for (const pos of allPositions) {
+            if (usedPositions.length >= 14) break; // max blocks
+            if (!isTooCloseToOther(pos.x, pos.y, usedPositions)) {
+                usedPositions.push(pos);
+            }
+        }
 
-        // Ensure multiple solution paths: generate diverse numbers and operators
+        // Generate blocks (aim for 10-14)
+        const operators = ['+', '-', '×'];
+        const blocks = [];
         let numCount = 0;
         let opCount = 0;
 
         for (let i = 0; i < usedPositions.length; i++) {
             const pos = usedPositions[i];
-            // Alternate: number, operator, number, operator...
-            // But add some randomness
             let isNumber;
             if (numCount === 0) {
-                isNumber = true; // first must be number
+                isNumber = true;
             } else if (opCount === 0 && numCount > 0) {
-                isNumber = false; // need at least one operator
+                isNumber = false;
             } else {
-                // Keep roughly 60% numbers, 40% operators
                 isNumber = rng() < 0.6;
             }
 
@@ -334,7 +387,7 @@
         }
 
         // Ensure minimum operators (at least 3)
-        while (opCount < 3) {
+        while (opCount < 3 && blocks.length > 4) {
             const idx = Math.floor(rng() * blocks.length);
             if (blocks[idx].type === 'number' && numCount > 4) {
                 blocks[idx].type = 'operator';
@@ -348,7 +401,7 @@
             target,
             platforms,
             blocks,
-            playerStart: { x: 60, y: H - TILE - PLAYER_H }
+            playerStart
         };
     }
 
