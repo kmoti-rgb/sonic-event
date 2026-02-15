@@ -243,166 +243,128 @@
         return arr[Math.floor(rng() * arr.length)];
     }
 
-    // ===== Random Level Generator =====
+    // ===== Random Level Generator (ドンキーコング算数遊び風バランス) =====
     function generateLevel(difficulty, seed) {
         const rng = seed != null ? createRNG(seed) : Math.random.bind(Math);
 
-        // Difficulty scaling (0=easy, increases)
-        const diff = Math.min(difficulty, 10);
-        const targetMin = 15 + diff * 8;
-        const targetMax = 30 + diff * 12;
-        const target = randInt(rng, targetMin, targetMax);
+        // --- Difficulty (ドンキーコング CALCULATE A/B style) ---
+        const diff = Math.min(difficulty, 12);
+        let allowedOps;
+        if (diff < 3) { allowedOps = ['+', '-']; }
+        else if (diff < 6) { allowedOps = ['+', '-', '×']; }
+        else { allowedOps = ['+', '-', '×', '÷']; }
 
-        // Generate platforms (5-8 floating platforms + ground)
-        const platformCount = randInt(rng, 5, 8);
-        const platforms = [
-            { x: 0, y: H - TILE, w: W, h: TILE }, // ground
-        ];
+        // --- Build a guaranteed solution chain ---
+        const solNums = [];
+        const solOps = [];
+        const numSteps = diff < 3 ? 2 : 3;
+        let cur = randInt(rng, 2, 9);
+        solNums.push(cur);
 
-        // Create platform positions avoiding overlap
+        for (let s = 0; s < numSteps - 1; s++) {
+            const op = pick(rng, allowedOps);
+            let n;
+            if (op === '×') {
+                n = randInt(rng, 2, Math.min(5, Math.floor(99 / Math.max(cur, 1))));
+                if (n < 2) n = 2; if (n > 9) n = 9;
+                cur *= n;
+            } else if (op === '÷') {
+                const divs = [];
+                for (let d = 2; d <= 9; d++) { if (cur % d === 0 && cur / d >= 1) divs.push(d); }
+                if (divs.length > 0) { n = pick(rng, divs); cur = Math.floor(cur / n); }
+                else { n = randInt(rng, 1, 9); cur += n; solOps.push('+'); solNums.push(n); continue; }
+            } else if (op === '-') {
+                n = randInt(rng, 1, Math.min(cur - 1, 9));
+                if (n < 1) n = 1;
+                cur -= n;
+            } else {
+                n = randInt(rng, 1, 9);
+                cur += n;
+            }
+            solOps.push(op);
+            solNums.push(n);
+        }
+        const target = Math.max(cur, 1);
+
+        // --- 3-layer platforms (Ground + Mid + Top) ---
+        const platforms = [{ x: 0, y: H - TILE, w: W, h: TILE }];
         const platSlots = [];
-        const slotWidth = (W - 100) / platformCount;
-        for (let i = 0; i < platformCount; i++) {
-            const px = 50 + i * slotWidth + rng() * (slotWidth * 0.3);
-            const heightLevel = randInt(rng, 2, 4);
-            const py = H - TILE * heightLevel;
+
+        const midY = H - TILE * 3;
+        const midCount = randInt(rng, 2, 3);
+        for (let i = 0; i < midCount; i++) {
+            const px = (W / (midCount + 1)) * (i + 0.5) + (rng() - 0.5) * 60;
+            const pw = TILE * (3 + rng() * 1.5);
+            platforms.push({ x: Math.round(px), y: midY, w: Math.round(pw), h: TILE * 0.5 });
+            platSlots.push({ x: Math.round(px), y: midY, w: Math.round(pw) });
+        }
+
+        const topY = H - TILE * 5;
+        const topCount = randInt(rng, 2, 3);
+        for (let i = 0; i < topCount; i++) {
+            const px = (W / (topCount + 1)) * (i + 0.5) + (rng() - 0.5) * 60;
             const pw = TILE * (2.5 + rng() * 1.5);
-            platforms.push({ x: Math.round(px), y: Math.round(py), w: Math.round(pw), h: TILE * 0.5 });
-            platSlots.push({ x: Math.round(px), y: Math.round(py), w: Math.round(pw) });
+            platforms.push({ x: Math.round(px), y: topY, w: Math.round(pw), h: TILE * 0.5 });
+            platSlots.push({ x: Math.round(px), y: topY, w: Math.round(pw) });
         }
 
-        // Player start area to avoid
+        // --- Block placement helpers ---
         const playerStart = { x: 60, y: H - TILE - PLAYER_H };
-        const BLOCK_SIZE = 40;
-        const MIN_BLOCK_DIST = 50; // minimum distance between blocks
+        const BS = 40, MDIST = 55;
 
-        // Helper: check if a block position overlaps any platform
-        function isInsidePlatform(bx, by) {
-            const blockRect = { x: bx, y: by, w: BLOCK_SIZE, h: BLOCK_SIZE };
-            for (const plat of platforms) {
-                // Check if block overlaps with platform body
-                if (bx + BLOCK_SIZE > plat.x && bx < plat.x + plat.w &&
-                    by + BLOCK_SIZE > plat.y && by < plat.y + plat.h) {
-                    return true;
-                }
-            }
+        function blocked(bx, by) {
+            for (const p of platforms)
+                if (bx + BS > p.x && bx < p.x + p.w && by + BS > p.y && by < p.y + p.h) return true;
+            return false;
+        }
+        function nearStart(bx, by) { return bx < playerStart.x + PLAYER_W + 30 && by > H - TILE * 2 - 60; }
+        function nearOther(bx, by, list) {
+            for (const p of list) if (Math.abs(bx - p.x) < MDIST && Math.abs(by - p.y) < MDIST) return true;
             return false;
         }
 
-        // Helper: check if too close to player start
-        function isTooCloseToStart(bx, by) {
-            return bx < playerStart.x + PLAYER_W + 20 && by > H - TILE * 2 - 60;
+        // Candidate positions
+        const cands = [];
+        for (let gx = 160; gx < W - 60; gx += 85) {
+            const p = { x: gx, y: H - TILE - BS - 8 };
+            if (!nearStart(p.x, p.y) && !blocked(p.x, p.y)) cands.push(p);
         }
-
-        // Helper: check if too close to another block
-        function isTooCloseToOther(bx, by, existingPositions) {
-            for (const pos of existingPositions) {
-                const dx = bx - pos.x;
-                const dy = by - pos.y;
-                if (Math.abs(dx) < MIN_BLOCK_DIST && Math.abs(dy) < MIN_BLOCK_DIST) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // Helper: check if block is reachable (not floating in empty space, not off screen)
-        function isReachable(bx, by) {
-            if (bx < 10 || bx + BLOCK_SIZE > W - 10) return false;
-            if (by < 10 || by + BLOCK_SIZE > H) return false;
-            return true;
-        }
-
-        // Generate candidate positions
-        const allPositions = [];
-
-        // Ground positions (spaced apart, avoiding player start)
-        for (let gx = 150; gx < W - 60; gx += 90) {
-            const pos = { x: gx, y: H - TILE - BLOCK_SIZE - 8 };
-            if (!isTooCloseToStart(pos.x, pos.y) && !isInsidePlatform(pos.x, pos.y)) {
-                allPositions.push(pos);
+        for (const pl of platSlots) {
+            const sw = BS + 20, m = 15;
+            for (let j = 0; j < Math.max(1, Math.floor((pl.w - m * 2) / sw)); j++) {
+                const bx = pl.x + m + j * sw, by = pl.y - BS - 8;
+                if (bx + BS <= pl.x + pl.w - 5 && !blocked(bx, by) &&
+                    bx >= 10 && bx + BS <= W - 10 && by >= 10 && !nearStart(bx, by))
+                    cands.push({ x: Math.round(bx), y: Math.round(by) });
             }
         }
 
-        // Platform positions (directly above each platform)
-        for (const plat of platSlots) {
-            const margin = 15;
-            const spotWidth = BLOCK_SIZE + 15;
-            const numSpots = Math.max(1, Math.floor((plat.w - margin * 2) / spotWidth));
-            for (let j = 0; j < numSpots; j++) {
-                const bx = plat.x + margin + j * spotWidth;
-                const by = plat.y - BLOCK_SIZE - 8;
-                // Verify block fits on platform and isn't inside another platform
-                if (bx + BLOCK_SIZE <= plat.x + plat.w - 5 &&
-                    !isInsidePlatform(bx, by) &&
-                    isReachable(bx, by) &&
-                    !isTooCloseToStart(bx, by)) {
-                    allPositions.push({ x: Math.round(bx), y: Math.round(by) });
-                }
-            }
-        }
-
-        // Shuffle positions
-        for (let i = allPositions.length - 1; i > 0; i--) {
+        // Shuffle and filter
+        for (let i = cands.length - 1; i > 0; i--) {
             const j = Math.floor(rng() * (i + 1));
-            [allPositions[i], allPositions[j]] = [allPositions[j], allPositions[i]];
+            [cands[i], cands[j]] = [cands[j], cands[i]];
         }
+        const spots = [];
+        for (const c of cands) { if (spots.length >= 12) break; if (!nearOther(c.x, c.y, spots)) spots.push(c); }
 
-        // Select positions ensuring no overlap between blocks
-        const usedPositions = [];
-        for (const pos of allPositions) {
-            if (usedPositions.length >= 14) break; // max blocks
-            if (!isTooCloseToOther(pos.x, pos.y, usedPositions)) {
-                usedPositions.push(pos);
-            }
-        }
-
-        // Generate blocks (aim for 10-14)
-        const operators = ['+', '-', '×'];
+        // --- Place solution blocks first, then decoys ---
         const blocks = [];
-        let numCount = 0;
-        let opCount = 0;
-
-        for (let i = 0; i < usedPositions.length; i++) {
-            const pos = usedPositions[i];
-            let isNumber;
-            if (numCount === 0) {
-                isNumber = true;
-            } else if (opCount === 0 && numCount > 0) {
-                isNumber = false;
-            } else {
-                isNumber = rng() < 0.6;
-            }
-
-            if (isNumber) {
-                const maxNum = Math.min(Math.max(5, Math.floor(target / 2)), 20);
-                const value = randInt(rng, 1, maxNum);
-                blocks.push({ type: 'number', value, x: pos.x, y: pos.y });
-                numCount++;
-            } else {
-                const op = pick(rng, operators);
-                blocks.push({ type: 'operator', value: op, x: pos.x, y: pos.y });
-                opCount++;
+        let si = 0;
+        for (let i = 0; i < solNums.length && si < spots.length; i++) {
+            blocks.push({ type: 'number', value: solNums[i], x: spots[si].x, y: spots[si].y }); si++;
+            if (i < solOps.length && si < spots.length) {
+                blocks.push({ type: 'operator', value: solOps[i], x: spots[si].x, y: spots[si].y }); si++;
             }
         }
-
-        // Ensure minimum operators (at least 3)
-        while (opCount < 3 && blocks.length > 4) {
-            const idx = Math.floor(rng() * blocks.length);
-            if (blocks[idx].type === 'number' && numCount > 4) {
-                blocks[idx].type = 'operator';
-                blocks[idx].value = pick(rng, operators);
-                opCount++;
-                numCount--;
-            }
+        const extraOps = ['+', '-', '×', '÷'];
+        while (si < spots.length) {
+            const p = spots[si];
+            if (rng() < 0.65) blocks.push({ type: 'number', value: randInt(rng, 1, 9), x: p.x, y: p.y });
+            else blocks.push({ type: 'operator', value: pick(rng, extraOps), x: p.x, y: p.y });
+            si++;
         }
 
-        return {
-            target,
-            platforms,
-            blocks,
-            playerStart
-        };
+        return { target, platforms, blocks, playerStart };
     }
 
     // ===== Level Management =====
